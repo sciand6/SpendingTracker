@@ -53,23 +53,29 @@
       google.setOnLoadCallback(drawPieChart);
       // Init expense and report variables
       var expenses = [];
-      var expense = {};
-      var weeklyReport = {};
-      var weeklySpendingReport = [];
       // Fetch expenses
       var getExpenses = function() {
           fetch('/expenses/getExpenses')
             .then(res => res.json())
             .then((expenseData) => { 
-                expenseData = expenseData.map(Object.values);
                 // Clear any existing expenses on the front-end
                 clearTable("expensesTable");
                 // Display expenses on the front-end
                 for (exp of expenseData) {
-                expenses.push(exp);
-                var dateRef = new Date(exp[1]);
-                var dayNum = dateRef.getMonth() + 1 + "/" + dateRef.getDate() + "/" + dateRef.getFullYear();
-                addExpenseToExpensesTable(dayNum, exp[2], exp[3], exp[0]);
+                    // Convert to human readable date
+                    var dateRef = new Date(exp.day);
+                    var dayNum = convertFromDate(dateRef);
+                    // Create a display friendly expense object
+                    expObj = {
+                        day: dayNum,
+                        category: exp.category,
+                        price: "$" + exp.price,
+                        _id: exp._id
+                    }
+                    // Push to local expenses array
+                    expenses.push(expObj);
+                    // Insert expense into expenses table
+                    insertObjectIntoTable("expensesTable", expObj, true, deleteExpense);
                 }
              })
             .catch(err => document.getElementById("errors").innerHTML = "ERROR: Couldn't find any expenses. Did you add any?");
@@ -116,24 +122,36 @@
           .catch(err => document.getElementById("errors").innerHTML = "There was a problem adding that expense. Check your internet connection.");
       }
 
-      // Add an expense to the expenses table
-      var addExpenseToExpensesTable = function(dayNum, category, price, id) {
-        // Add the expense to the expenses table
-        var expensesTable = document.getElementById("expensesTable");
-        var row = expensesTable.insertRow(1);
-        var dayRow = row.insertCell(0);
-        var categoryRow = row.insertCell(1);
-        var priceRow = row.insertCell(2);
-        var deleteBtn = document.createElement("input");
-        deleteBtn.type = "button";
-        deleteBtn.value = "X";
-        deleteBtn.id = id;
-        deleteBtn.classList.add("deleteButton");
-        deleteBtn.onclick = deleteExpense;
-        row.appendChild(deleteBtn);
-        dayRow.innerHTML = dayNum;
-        categoryRow.innerHTML = category;
-        priceRow.innerHTML = "$" + price;
+      // Insert object at the top of a table
+      var insertObjectIntoTable = function(tableId, obj, delBtn, delHandle) {
+          // Insert with delete button
+          if (delBtn) {
+            var tableRef = document.getElementById(tableId);
+            var row = tableRef.insertRow(1);
+            var deleteBtn = document.createElement("input");
+            deleteBtn.type = "button";
+            deleteBtn.value = "X";
+            deleteBtn.id = obj._id;
+            deleteBtn.classList.add("deleteButton");
+            deleteBtn.onclick = delHandle;
+            delete obj._id
+            Object.values(obj).forEach(val => {
+                var dataColumn = document.createElement("td");
+                dataColumn.innerHTML = val;
+                row.appendChild(dataColumn);
+            });
+            row.appendChild(deleteBtn);
+          } 
+          // Insert without delete button
+          else {
+            var tableRef = document.getElementById(tableId);
+            var row = tableRef.insertRow(1);
+            Object.values(obj).forEach(val => {
+                var dataColumn = document.createElement("td");
+                dataColumn.innerHTML = val;
+                row.appendChild(dataColumn);
+            });
+          }
       }
 
       // Clear the values of a HTML table
@@ -143,11 +161,16 @@
               tableToClear.deleteRow(1);
           }
       }
-      
+
+      // Convert date object to human readable date
+      var convertFromDate = function(dateToConvert) {
+        return dateToConvert.getMonth() + 1 + "/" + dateToConvert.getDate() + "/" + dateToConvert.getFullYear();
+      }
+
       // Convert date input values to dates
       var convertToDate = function(convertedDate) {
           convertedDate = convertedDate.split("-");
-          return new Date(convertedDate[0], convertedDate[1] - 1, convertedDate[2]);
+          return convertedDate = new Date(convertedDate[0], convertedDate[1] - 1, convertedDate[2]);
       }
 
       var buildWeeklyReportTable = function(weeklyReport, grandTotal) {
@@ -170,52 +193,53 @@
           clearTable("weeklyReportTable");
           // Init report values
           var grandTotal = 0;
-          weeklyReport = {};
-          weeklySpendingReport = [];    
+          var weeklyReport = {};
+          // Clear existing weeklyReport
+          for (var member in weeklyReport) delete weeklyReport[member];
+          console.log(weeklyReport);
           // Check if there are any expenses to report on
           if (expenses === undefined || expenses.length == 0) {
               document.getElementById("totalSpent").innerHTML = "ERROR: Found no purchases. Please log at least one purchase.";
               return;
           }
           // Get the to and from date values if there are any
-          var from = document.getElementById("from").value;
-          var to = document.getElementById("to").value;
-          if (!from || !to) {
-              document.getElementById("totalSpent").innerHTML = "ERROR: Please enter valid dates.";
-              return;
+          var from = convertToDate(document.getElementById("from").value);
+          var to = convertToDate(document.getElementById("to").value);
+          // Calculate expense report without date inputs
+          if (!document.getElementById("from").value|| !document.getElementById("to").value) {
+                for (expense of expenses) {
+                    let dateRef = new Date(expense.day);
+                    grandTotal += parseFloat(expense.price.substr(1));
+                    if (weeklyReport[expense.category] === undefined) {
+                        weeklyReport[expense.category] = parseFloat(expense.price.substr(1));
+                    } else {
+                        weeklyReport[expense.category] += parseFloat(expense.price.substr(1));
+                    }
+                }
           }
-          // Convert the to and from values to date objects
-          from = convertToDate(from);
-          to = convertToDate(to);    
-          // Check if the to and from dates are within the date ranges of the logged purchases
-          var beg = expenses.map(function(e) { var expenseFromDate = new Date(e[1]); return expenseFromDate.getTime(); }).indexOf(from.getTime());
-          var end = expenses.map(function(e) { var expenseFromDate = new Date(e[1]); return expenseFromDate.getTime(); }).lastIndexOf(to.getTime());
-          if (beg == -1 || end == -1) {
-              document.getElementById("totalSpent").innerHTML = "ERROR: Please enter a valid date range.";
-              return;
-          } 
-          // Iterate through expenses array from begin date to end date generating the report
-          for (var i = beg; i <= end; ++i) {
-              // Add price of current expense to grandtotal
-              grandTotal += parseFloat(expenses[i][3]);
-              // Add category of current expense to weeklyReport object
-              weeklyReport[expenses[i][2]] = 0; 
-          }
-          for (var i = beg; i <= end; ++i) {
-              // Add price of current expense to the correct weeklyReportcategory
-              weeklyReport[expenses[i][2]] += parseFloat(expenses[i][3]); 
+          // Calculate expense report with date inputs
+          for (expense of expenses) {
+              let dateRef = new Date(expense.day);
+              if (dateRef.getTime() >= from.getTime() && dateRef.getTime() <= to.getTime()) {
+                  grandTotal += parseFloat(expense.price.substr(1));
+                  if (weeklyReport[expense.category] === undefined) {
+                      weeklyReport[expense.category] = parseFloat(expense.price.substr(1));
+                  } else {
+                      weeklyReport[expense.category] += parseFloat(expense.price.substr(1));
+                  }
+              }
           }
           // Display the results
           buildWeeklyReportTable(weeklyReport, grandTotal);
           var toDate = document.getElementById("to").value;
           var fromDate = document.getElementById("from").value;
           document.getElementById("totalSpent").innerHTML = "You've spent $" + grandTotal + " from " + fromDate + " to " + toDate + ".";
-          drawPieChart();
+          drawPieChart(weeklyReport);
           window.scrollTo(0, document.body.scrollHeight);
       }
 
       // Draw a pie chart based off of the spending data
-      var drawPieChart = function() {
+      var drawPieChart = function(weeklyReport) {
             // Generate pie chart
             weeklySpendingReport = Object.entries(weeklyReport);
             weeklySpendingReport.unshift(['Category', 'Money Spent'])
