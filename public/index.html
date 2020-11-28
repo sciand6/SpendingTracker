@@ -60,6 +60,7 @@
             .then((expenseData) => { 
                 // Clear any existing expenses on the front-end
                 clearTable("expensesTable");
+                expenses = [];
                 // Display expenses on the front-end
                 for (exp of expenseData) {
                     // Convert to human readable date
@@ -194,9 +195,6 @@
           // Init report values
           var grandTotal = 0;
           var weeklyReport = {};
-          // Clear existing weeklyReport
-          for (var member in weeklyReport) delete weeklyReport[member];
-          console.log(weeklyReport);
           // Check if there are any expenses to report on
           if (expenses === undefined || expenses.length == 0) {
               document.getElementById("totalSpent").innerHTML = "ERROR: Found no purchases. Please log at least one purchase.";
@@ -206,7 +204,7 @@
           var from = convertToDate(document.getElementById("from").value);
           var to = convertToDate(document.getElementById("to").value);
           // Calculate expense report without date inputs
-          if (!document.getElementById("from").value|| !document.getElementById("to").value) {
+          if (!document.getElementById("from").value || !document.getElementById("to").value) {
                 for (expense of expenses) {
                     let dateRef = new Date(expense.day);
                     grandTotal += parseFloat(expense.price.substr(1));
@@ -216,18 +214,19 @@
                         weeklyReport[expense.category] += parseFloat(expense.price.substr(1));
                     }
                 }
-          }
-          // Calculate expense report with date inputs
-          for (expense of expenses) {
-              let dateRef = new Date(expense.day);
-              if (dateRef.getTime() >= from.getTime() && dateRef.getTime() <= to.getTime()) {
-                  grandTotal += parseFloat(expense.price.substr(1));
-                  if (weeklyReport[expense.category] === undefined) {
-                      weeklyReport[expense.category] = parseFloat(expense.price.substr(1));
-                  } else {
-                      weeklyReport[expense.category] += parseFloat(expense.price.substr(1));
-                  }
-              }
+          } else {
+              // Calculate expense report with date inputs
+                for (expense of expenses) {
+                    let dateRef = new Date(expense.day);
+                    if (dateRef.getTime() >= from.getTime() && dateRef.getTime() <= to.getTime()) {
+                        grandTotal += parseFloat(expense.price.substr(1));
+                        if (weeklyReport[expense.category] === undefined) {
+                            weeklyReport[expense.category] = parseFloat(expense.price.substr(1));
+                        } else {
+                            weeklyReport[expense.category] += parseFloat(expense.price.substr(1));
+                        }
+                    }
+                }
           }
           // Display the results
           buildWeeklyReportTable(weeklyReport, grandTotal);
