@@ -4,14 +4,19 @@
   "description": "A web application to log your expenses and generate reports based off your expenditures.",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "devStart": "nodemon index.js"
   },
   "keywords": [],
   "author": "Malcolm",
   "license": "MIT",
   "dependencies": {
+    "bcrypt": "^5.0.0",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "mongoose": "^5.10.14"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.6"
   }
 }
