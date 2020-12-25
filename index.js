@@ -12,7 +12,7 @@ app.use(express.json());
 app.use(cors());
 
 // Connect to mongoDB
-mongoose.connect(process.env.mongoURI.toString(), {
+mongoose.connect(process.env.mongoURI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
