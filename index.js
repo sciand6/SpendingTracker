@@ -12,7 +12,7 @@ app.use(express.json());
 app.use(cors());
 
 // Connect to mongoDB
-mongoose.connect(process.env.mongoURI, {
+mongoose.connect(process.env.mongoURI.toString(), {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
@@ -29,4 +29,4 @@ app.use("/auth", require("./routes/auth"));
 app.use(express.static(path.join(__dirname, "public")));
 
 // Start server
-app.listen(port || process.env.PORT);
+app.listen(process.env.PORT || 5000);
