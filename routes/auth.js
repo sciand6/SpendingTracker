@@ -34,9 +34,8 @@ router.post("/signup", (req, res) => {
         user
           .save()
           .then((user) => {
-            res.json({
-              success: `User ${user.username} registration successful.`,
-            });
+            const token = jwt.sign({ _id: user._id }, process.env.JWTSecret);
+            res.json({ token, user: { username, email } });
           })
           .catch((err) => {
             return res.status(400).json({ msg: err });
@@ -62,7 +61,7 @@ router.post("/login", (req, res) => {
   User.findOne({ email: email })
     .then((savedUser) => {
       if (!savedUser) {
-        return res.json({ msg: "Invalid email or password." });
+        return res.status(400).json({ msg: "Invalid email or password." });
       }
 
       bcrypt.compare(password, savedUser.password).then((pwMatch) => {

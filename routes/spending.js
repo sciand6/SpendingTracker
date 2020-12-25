@@ -20,7 +20,7 @@ router.get("/getExpenses", authenticateUser, (req, res) => {
         });
       });
 
-      res.json({ expenses });
+      res.json(expenses);
     })
     .catch((err) => {
       return res.status(400).json({ msg: err });
@@ -29,17 +29,11 @@ router.get("/getExpenses", authenticateUser, (req, res) => {
 
 // Create expense
 router.post("/createExpense", authenticateUser, (req, res) => {
-  const { category, price } = req.body;
+  let { category, price } = req.body;
   var day = new Date();
-  day.setHours(0, 0, 0, 0);
 
   // Input validation
-  if (
-    !category ||
-    !price ||
-    typeof category != "string" ||
-    typeof price != "number"
-  ) {
+  if (!category || !price) {
     return res.status(400).json({ msg: "Enter a valid category and price." });
   }
 
