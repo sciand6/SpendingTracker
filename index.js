@@ -29,4 +29,4 @@ app.use("/auth", require("./routes/auth"));
 app.use(express.static(path.join(__dirname, "public")));
 
 // Start server
-app.listen(port);
+app.listen(port || process.env.PORT);
