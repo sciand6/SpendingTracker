@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const authenticateUser = require("../middleware/authenticateUser");
 
 // Sign up
 router.post("/signup", (req, res) => {
@@ -79,6 +80,40 @@ router.post("/login", (req, res) => {
     .catch((err) => {
       return res.status(400).json({ msg: err });
     });
+});
+
+// Reset password
+router.put("/resetPassword", authenticateUser, (req, res) => {
+  const { password, email } = req.body;
+
+  // Input validation
+  if (!password) {
+    return res.status(400).json({ msg: "Please submit a valid password." });
+  }
+
+  // Find the user to update
+  User.findOne({ email: email }).then((savedUser) => {
+    // Hash password
+    bcrypt
+      .hash(password, 12)
+      .then((hashedPwd) => {
+        savedUser.password = hashedPwd;
+        // Save user in db
+        savedUser
+          .save()
+          .then((user) => {
+            res.json({ success: "Password reset successful." });
+          })
+          .catch((err) => {
+            return res.status(400).json({ msg: err });
+          });
+      })
+      .catch((err) => {
+        return res
+          .status(400)
+          .json({ msg: "There is no user with this email address." });
+      });
+  });
 });
 
 module.exports = router;
