@@ -1,4 +1,5 @@
 const User = require("../models/user");
+const Expense = require("../models/expense");
 const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcrypt");
@@ -84,7 +85,7 @@ router.post("/login", (req, res) => {
 
 // Reset password
 router.put("/resetPassword", authenticateUser, (req, res) => {
-  const { password, email } = req.body;
+  const { password, oldPassword, email } = req.body;
 
   // Input validation
   if (!password) {
@@ -92,28 +93,92 @@ router.put("/resetPassword", authenticateUser, (req, res) => {
   }
 
   // Find the user to update
-  User.findOne({ email: email }).then((savedUser) => {
-    // Hash password
-    bcrypt
-      .hash(password, 12)
-      .then((hashedPwd) => {
-        savedUser.password = hashedPwd;
-        // Save user in db
-        savedUser
-          .save()
-          .then((user) => {
-            res.json({ success: "Password reset successful." });
-          })
-          .catch((err) => {
-            return res.status(400).json({ msg: err });
-          });
-      })
-      .catch((err) => {
-        return res
-          .status(400)
-          .json({ msg: "There is no user with this email address." });
+  User.findOne({ email: email })
+    .then((savedUser) => {
+      // Check if valid password
+      bcrypt.compare(oldPassword, savedUser.password, (err, result) => {
+        if (err) {
+          return res
+            .status(400)
+            .json({ msg: "There was a problem reseting your password." });
+        }
+        if (result) {
+          // Hash password
+          bcrypt
+            .hash(password, 12)
+            .then((hashedPwd) => {
+              savedUser.password = hashedPwd;
+              // Save user in db
+              savedUser
+                .save()
+                .then((user) => {
+                  res.json({ success: "Password reset successful." });
+                })
+                .catch((err) => {
+                  return res.status(400).json({ msg: err });
+                });
+            })
+            .catch((err) => {
+              return res
+                .status(400)
+                .json({ msg: "There was a problem reseting your password." });
+            });
+        } else {
+          return res.status(400).json({ msg: "Passwords do not match." });
+        }
       });
-  });
+    })
+    .catch((err) => {
+      return res.status(400).json({ msg: "No user with this email exists." });
+    });
+});
+
+// Delete account
+router.delete("/deleteAccount", authenticateUser, (req, res) => {
+  const { password, email } = req.body;
+
+  // Find the user to delete
+  User.findOne({ email: email })
+    .then((savedUser) => {
+      // Check if valid password
+      bcrypt.compare(password, savedUser.password, (err, result) => {
+        if (err) {
+          return res
+            .status(400)
+            .json({ msg: "There was a problem deleting your account." });
+        }
+        if (result) {
+          // Delete all expense data associated with the user
+          Expense.deleteMany({
+            createdBy: new mongo.ObjectId(savedUser._id),
+          })
+            .then((result) => {
+              // Finally delete the user's account
+              User.deleteOne({ email: email })
+                .then((err, data) => {
+                  res.json({
+                    success: "Your account has been deleted successfully.",
+                  });
+                })
+                .catch((err) => {
+                  return res.status(400).json({
+                    msg: "There was a problem deleting your account.",
+                  });
+                });
+            })
+            .catch((err) => {
+              return res.status(400).json({
+                msg: "There was a problem deleting your account's data.",
+              });
+            });
+        } else {
+          return res.status(400).json({ msg: "Passwords do not match." });
+        }
+      });
+    })
+    .catch((err) => {
+      return res.status(400).json({ msg: "No user with this email exists." });
+    });
 });
 
 module.exports = router;
