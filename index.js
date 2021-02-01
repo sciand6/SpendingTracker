@@ -20,12 +20,17 @@ mongoose.connect(process.env.mongoURI, {
 var db = mongoose.connection;
 db.on("error", console.error.bind(console, "MongoDB connection error:"));
 
+// Welcome route
+app.get("/", (req, res) => {
+  res.send("Spent It API V1");
+});
+
 // Bind routes
 app.use("/expenses", require("./routes/spending"));
 app.use("/auth", require("./routes/auth"));
 
-// Serve HTML and CSS
-app.use(express.static(path.join(__dirname, "public")));
+// Serve HTML through the views folder
+app.set("view engine", "ejs");
 
 // Start server
 app.listen(process.env.PORT || 5000);
