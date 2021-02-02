@@ -8,6 +8,7 @@ const authenticateUser = require("../middleware/authenticateUser");
 const crypto = require("crypto");
 const sgMail = require("@sendgrid/mail");
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+const baseApiUrl = "http://radiant-plateau-09444.herokuapp.com";
 
 // Sign up
 router.post("/signup", (req, res) => {
@@ -112,9 +113,9 @@ router.post("/forgotPassword", (req, res) => {
           subject: "Spent It Password Reset",
           html: `
                      <p>A request has been made to change the password of your account.</p>
-					 <h5>Click on this <a href="http://localhost:5000/auth/reset/${token}">link</a> to reset your password.</h5>
+					 <h5>Click on this <a href="${baseApiUrl}/auth/reset/${token}">link</a> to reset your password.</h5>
 					 <p> Or copy and paste the following link :</p>
-					 <h5>"http://localhost:5000/auth/reset/${token}"</h5>
+					 <h5>"${baseApiUrl}/auth/reset/${token}"</h5>
 					 <h5>The link is only valid for 10min.</h5>
            <h5>If you weren't the sender of that request , you can just ignore this message.</h5>
                      `,
@@ -138,6 +139,16 @@ router.post("/forgotPassword", (req, res) => {
 router.get("/reset/:token", (req, res) => {
   const token = req.params.token;
   res.render("forgotpassword", { token: token });
+});
+
+// Forgot password fail page
+router.get("/forgotPasswordFailed", (req, res) => {
+  res.render("forgotpasswordfail");
+});
+
+// Forgot password success page
+router.get("/forgotPasswordSuccess", (req, res) => {
+  res.render("forgotpasswordsuccess");
 });
 
 // Forgot password change request
